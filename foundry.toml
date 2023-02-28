@@ -14,9 +14,11 @@ quote_style = 'single'
 
 [rpc_endpoints]
 goerli = "${GOERLI_RPC_URL}"
+polygon = "${POLYGON_RPC_URL}"
 
 [etherscan]
 goerli = { key = "${ETHERSCAN_API_KEY}" }
+polygon = { key = "${POLYGONSCAN_API_KEY}", url = "https://api.polygonscan.com/api" }
 
 
 

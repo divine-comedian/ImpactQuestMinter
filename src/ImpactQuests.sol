@@ -1,18 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import '@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol';
+import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import '@openzeppelin/contracts/token/ERC1155/extensions/ERC1155URIStorage.sol';
 
-contract GivethImpactQuest is ERC1155Burnable, AccessControl, ERC1155URIStorage {
-    using SafeERC20 for IERC20;
+contract GivethImpactQuest is ERC1155, AccessControl, ERC1155URIStorage {
 
     error NoTokenExists(uint256 tokenId);
+    error TokenNonTransferrable(uint256 tokenId);
+    error TokenBatchNonTransferrable(uint256[] tokenIds);
 
     event Mint(address recipient, uint256 tokenId, uint256 amount);
     event MintBatch(address recipient, uint256 totalAmounts);
 
+    string public name = "Giveth Impact Quests 2023";
+    string public symbol = "GIQ23";
     string baseURI;
     uint96 uniqueTokens = 0;
     bytes32 public constant URI_SETTER_ROLE = keccak256("URI_SETTER_ROLE");
@@ -26,8 +29,8 @@ contract GivethImpactQuest is ERC1155Burnable, AccessControl, ERC1155URIStorage 
         baseURI = _baseURI;
     }
 
-    function mint(address account, uint256 id, uint256 amount) external onlyRole(MINTER_ROLE) {
-
+    function mint(address account, uint256 id) external onlyRole(MINTER_ROLE) {
+       uint256 amount = 1;
         if (id > uniqueTokens) {
             revert NoTokenExists(id);
         }
@@ -36,13 +39,31 @@ contract GivethImpactQuest is ERC1155Burnable, AccessControl, ERC1155URIStorage 
         emit Mint(account, id, amount);
     }
 
-    function mintBatch(address to, uint256[] memory ids, uint256[] memory amounts) external onlyRole(MINTER_ROLE) {
+    function mintToMany(address[] memory accounts, uint256 id) external onlyRole(MINTER_ROLE) {
+        uint256 amount = 1;
+
+            for (uint256 i = 0; i < accounts.length;) {
+                if (id > uniqueTokens) {
+                    revert NoTokenExists(id);
+                }
+                _mint(accounts[i], id, amount, '');
+                emit Mint(accounts[i], id, amount);
+                unchecked {
+                    i++;
+                }
+        }
+    }
+
+    function mintBatch(address to, uint256[] memory ids) external onlyRole(MINTER_ROLE) {
         uint256 totalAmount;
+        uint256[] memory amounts = new uint256[](ids.length);
 
             for (uint256 i = 0; i < ids.length;) {
                 if (ids[i] > uniqueTokens) {
                     revert NoTokenExists(ids[i]);
                 }
+                amounts[i] = 1;
+                totalAmount += amounts[i];
                 unchecked {
                     i++;
                 }
@@ -87,5 +108,46 @@ contract GivethImpactQuest is ERC1155Burnable, AccessControl, ERC1155URIStorage 
         return super.supportsInterface(interfaceId);
     }
 
-    function transfer()
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 id,
+        uint256 amount,
+        bytes memory data
+    ) public virtual override {
+        
+        revert TokenNonTransferrable(id);
+    }
+
+    function safeBatchTransferFrom(
+        address from,
+        address to,
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        bytes memory data
+    ) public virtual override {
+        revert TokenBatchNonTransferrable(ids);
+            
+        }
+
+    function setApprovalForAll(address operator, bool approved) public virtual override {
+        revert TokenNonTransferrable(0);
+    }
+
+    function burn(
+        address account,
+        uint256 id,
+        uint256 value
+    ) public virtual onlyRole(MINTER_ROLE) {
+        _burn(account, id, value);
+    }
+
+    function burnBatch(
+        address account,
+        uint256[] memory ids,
+        uint256[] memory values
+    ) public virtual onlyRole(MINTER_ROLE) {
+        
+        _burnBatch(account, ids, values);
+    }
 }
